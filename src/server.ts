@@ -12,9 +12,37 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
+app.get('/', (req, res) => {
+    res.json({
+        message: "Hello World"
+    })
+})
+
 app.use('/api', protect, router);
 
 app.post('/user', createNewUser);
 app.post('/signin', signIn);
+
+app.use((err, req, res, next) => {
+
+    if (err.type === "auth") {
+        res.status(401);
+        res.json({
+            message: "Unauthorized"
+        });
+
+    }else if (err.type === "input") {
+        res.status(400);
+        res.json({
+            message: "Invalid input"
+        });
+    
+    }else {
+        res.status(400);
+        res.json({
+            message: "An unkown error occured"
+        });
+    }
+})
 
 export default app;

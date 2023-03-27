@@ -46,10 +46,13 @@ export const createUpdate = async (req, res) => {
     });
 
     if(!product) {
-        // handle this
+        // There is no product or product does not belong to user
 
         res.json({
-            data: null
+            data: ({
+                message: "product does not exist",
+                data: null
+            })
         })
 
         return;
@@ -57,46 +60,94 @@ export const createUpdate = async (req, res) => {
 
     const update = await prisma.update.create({
         data: {
-            ...req.body
+            title: req.body.title,
+            body: req.body.body,
+            product: {connect: {id: product.id}}
         }
     });
 
 
-    res.json({data: update});
+    res.json({
+        data: update
+    });
 }
 
 
 // UPDATE update
 
 export const updateUpdate = async (req, res) => {
-    const product = await prisma.product.findFirst({
+    const products = await prisma.product.findMany({
         where: {
-            id: req.body.productId,
             belongsToId: req.user.id
+        },
+        include: {
+            updates: true
         }
     });
 
-    if(!product) {
-        // handle this
+    const updates = products.reduce((allUpdates, product) => {
+        return [...allUpdates, ...product.updates];
+    }, [])
 
-        res.json({
-            data: null
+    const match = updates.find(update => {
+        return update.id === req.params.id
+    })
+
+    if (!match) {
+        return res.json({
+            message: "no update to update"
         })
+    }
 
-        return;
-    };
-
-    // const match = product.find()
-
-    const updatedUpdate = prisma.update.update({
+    const updatedUpdate = await prisma.update.update({
         where: {
-            id: req.body.id
+            id: req.params.id
         },
         data: {
             ...req.body
         }
     })
+
+
+    res.json({
+        data: updatedUpdate
+    })
 }
+
 
 // DELETE update
 
+export const deleteUpdate = async (req, res) => {
+    const products = await prisma.product.findMany({
+        where: {
+            belongsToId: req.user.id
+        }, 
+        include: {
+            updates: true
+        }
+    })
+
+    const updates = products.reduce((allUpdates, product) => {
+        return [...allUpdates, ...product.updates]
+    }, [])
+
+    const match = updates.find(update => {
+        return update.id === req.params.id
+    })
+
+    if (!match) {
+        return res.json({
+            message: "nothing to delete"
+        })
+    }
+
+    const deleted = await prisma.update.delete({
+        where: {
+            id: req.params.id
+        }
+    })
+
+    return res.json({
+        data: deleted
+    })
+}
